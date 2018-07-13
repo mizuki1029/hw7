@@ -46,7 +46,6 @@ class Game:
                                     moves.append(move)
                                     scores.append(myscore)
                 bestPos = self.findBestPos(scores)
-                print('best move', bestPos)
                 return (moves, bestPos)
         
         def EvaluateScore(self, next_board, move):
@@ -78,9 +77,9 @@ class Game:
                                         score["key"] =gGain[y-1][x-1]#重みを代入
                 return score
                 
-        def findBestMove(self, scores):
+        def findBestPos(self, scores):
                 if scores:
-                        scores = sorted(scores, key=lambda x: x["Score"]["key"], reverse=True)#降順にソート
+                        scores = sorted(scores, key=lambda x: x["Score"]["total"], reverse=True)#降順にソート
                         bestPos = scores[0]#1番目のものが、最も点数が高い
                         return bestPos#最も点数が高くなったものを返す
                 else:
@@ -208,7 +207,7 @@ Paste JSON here:<p/><textarea name=json cols=80 rows=24></textarea>
     def pickMove(self, g):
     	# Gets all valid moves.
     	valid_moves = g.ValidMoves()[0] #1つ目の返り値：石を置ける場所
-        bestPos = g.ValidMoves()[1] #2つ目の返り値：最も良いと思われる場所
+        bestPos = g.ValidMoves()[1] #2つ目の返り値：最も良い点数
     	if len(valid_moves) == 0:
     		# Passes if no valid moves.
     		self.response.write("PASS")
