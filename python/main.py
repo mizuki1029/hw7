@@ -79,7 +79,7 @@ class Game:
                 
         def findBestPos(self, scores):
                 if scores:
-                        scores = sorted(scores, key=lambda x: x["Score"]["total"], reverse=True)#降順にソート
+                        scores = sorted(scores, key=lambda x: x["Score"]["sum"], reverse=True)#降順にソート
                         bestPos = scores[0]#1番目のものが、最も点数が高い
                         return bestPos#最も点数が高くなったものを返す
                 else:
