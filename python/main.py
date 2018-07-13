@@ -22,7 +22,7 @@ class Game:
 	# None for coordinate out of scope.
 	def Pos(self, x, y):
 		return Pos(self._board["Pieces"], x, y)
-
+        
 	# Returns who plays next.
 	def Next(self):
 		return self._board["Next"]
@@ -33,14 +33,59 @@ class Game:
 	#   "As": player number
 	def ValidMoves(self):
                 moves = []
+                scores = []
                 for y in xrange(1,9):
                         for x in xrange(1,9):
                                 move = {"Where": [x,y],
                                         "As": self.Next()}
-                                if self.NextBoardPosition(move):
-                                        moves.append(move)
-                return moves
-
+                                nextBoard = self.NextBoardPosition(move)
+                                if nextBoard:
+                                    score = self.EvaluateScore(nextBoard, move)
+                                    myscore = {"Where" :[x,y],
+                                               "Score": score}
+                                    moves.append(move)
+                                    scores.append(myscore)
+                bestPos = self.findBestPos(scores)
+                print('best move', bestPos)
+                return (moves, bestPos)
+        
+        def EvaluateScore(self, next_board, move):
+                board = vars(next_board)
+                assert board != []
+                nextBoard = board['_board']['Pieces']#盤面の情報
+                nextPlayer =board['_board']['Next']#次に打つプレイヤー
+                #重み付けの参考：reference:http://uguisu.skr.jp/othello/5-1.html
+                gGain = [[30, -12,  0,  -1,  -1,  0,  -12, 30],
+                        [-12,  -15,  -3,  -3,  -3,  -3,  -15,  -12],
+                        [0,  -3,   0,   -1,   -1,   0,  -3,  0],
+                        [-1,  -3,   -1,   -1,   -1,   -1,  -3,  -1],
+                        [-1,  -3,   -1,   -1,   -1,   -1,  -3,  -1],
+                        [0,  -3,   0,   -1,   -1,   0,  -3,  0],
+                        [-12,  -15,  -3,  -3,  -3,  -3,  -15,  -12],
+                        [30, -12,  0,  -1,  -1,  0,  -12, 30]]
+                score = {"sum": 0, "key": 0}
+                for y in xrange(0, 8):
+                        for x in xrange(0, 8):
+                                if nextBoard[y][x] == nextPlayer:#次に打つプレイヤーの色
+                                        score["sum"] += gGain[y][x]#重みを加算
+                                elif nextBoard[y][x] == 0:#まだ石が置かれていない
+                                        score["sum"] = score["sum"]#何もしない
+                                else:#相手（もう打ったプレイヤー）の色
+                                        score["sum"]-= gGain[y][x]#重みを減算
+                for y in xrange(1, 9):
+                        for x in xrange(1, 9):
+                                if move["Where"] == [x, y]:#石を置けるなら
+                                        score["key"] =gGain[y-1][x-1]#重みを代入
+                return score
+                
+        def findBestMove(self, scores):
+                if scores:
+                        scores = sorted(scores, key=lambda x: x["Score"]["key"], reverse=True)#降順にソート
+                        bestPos = scores[0]#1番目のものが、最も点数が高い
+                        return bestPos#最も点数が高くなったものを返す
+                else:
+                        return {"Where":None}
+        
 	# Helper function of NextBoardPosition.  It looks towards
 	# (delta_x, delta_y) direction for one of our own pieces and
 	# flips pieces in between if the move is valid. Returns True
@@ -122,7 +167,10 @@ def PrettyPrint(board, nl="<br>"):
 
 def PrettyMove(move):
 	m = move["Where"]
-	return '%s%d' % (chr(ord('A') + m[0] - 1), m[1])
+        if m is not None:
+	        return '%s%d' % (chr(ord('A') + m[0] - 1), m[1])
+        else:
+                return 'PASS'
 
 class MainHandler(webapp2.RequestHandler):
     # Handling GET request, just for debugging purposes.
@@ -149,10 +197,18 @@ Paste JSON here:<p/><textarea name=json cols=80 rows=24></textarea>
         # Do the picking of a move and print the result.
         self.pickMove(g)
 
-
+    def choosePos(self, valid_moves, bestPos):
+        if valid_moves:
+                for vm in valid_moves:
+                        if vm["Where"] == bestPos["Where"]:
+                                return vm
+        else:
+                return {"Where": None}
+                
     def pickMove(self, g):
     	# Gets all valid moves.
-    	valid_moves = g.ValidMoves()
+    	valid_moves = g.ValidMoves()[0] #1つ目の返り値：石を置ける場所
+        bestPos = g.ValidMoves()[1] #2つ目の返り値：最も良いと思われる場所
     	if len(valid_moves) == 0:
     		# Passes if no valid moves.
     		self.response.write("PASS")
@@ -161,7 +217,8 @@ Paste JSON here:<p/><textarea name=json cols=80 rows=24></textarea>
                 # TO STEP STUDENTS:
                 # You'll probably want to change how this works, to do something
                 # more clever than just picking a random move.
-	    	move = random.choice(valid_moves)
+	        move = self.choosePos(valid_moves, bestPos)
+                print(move)
     		self.response.write(PrettyMove(move))
 
 app = webapp2.WSGIApplication([
