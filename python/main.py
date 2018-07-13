@@ -40,7 +40,9 @@ class Game:
                                         "As": self.Next()}
                                 nextBoard = self.NextBoardPosition(move)
                                 if nextBoard:
-                                    score = self.EvaluateScore(nextBoard, move)
+                                    #score = self.EvaluateScore(nextBoard, move)
+                                    #depth = 2, alpha = -50000, beta = 50000, move, flag = 0
+                                    score = self.AlphaBeta(nextBoard, 2, -50000, 50000, move, 0)
                                     myscore = {"Where" :[x,y],
                                                "Score": score}
                                     moves.append(move)
@@ -52,7 +54,7 @@ class Game:
                 board = vars(next_board)
                 assert board != []
                 nextBoard = board['_board']['Pieces']#盤面の情報
-                nextPlayer =board['_board']['Next']#次に打つプレイヤー
+                nextPlayer = board['_board']['Next']#次に打つプレイヤー
                 #重み付けの参考：reference:http://uguisu.skr.jp/othello/5-1.html
                 gGain = [[30, -12,  0,  -1,  -1,  0,  -12, 30],
                         [-12,  -15,  -3,  -3,  -3,  -3,  -15,  -12],
@@ -84,6 +86,32 @@ class Game:
                         return bestPos#最も点数が高くなったものを返す
                 else:
                         return {"Where":None}
+        #reference:http://aidiary.hatenablog.com/entry/20050205/1274150331
+        #          http://aidiary.hatenablog.com/entry/20041226/1274148758
+        def AlphaBeta(self, board, depth, alpha, beta, move, flag):
+                if depth<1:
+                        estimatedScore = self.EvaluateScore(board, move)
+                        return estimatedScore
+                #1つ深いところの評価値を計算する。（再帰）
+                score = self.AlphaBeta(board, depth-1, alpha, beta, move, flag)
+                if self.Next() == 1:#先攻
+                        if flag == 0:#初期値の代入
+                                best = -50000
+                                flag = 1
+                        if score > best:#最大を選びたい
+                                best = score
+                                alpha = best#α値を更新
+                        if best > beta:#現在の最大値が、β値より大きい場合はこれ以上評価しない
+                                return best
+                else:
+                        if flag == 0:#初期値の代入
+                                best = 50000
+                                flag = 1
+                        if score < best:#最小を選びたい
+                                best = score
+                                beta = best#β値を更新
+                        if best < alpha:#現在の最小値がα値より小さい場合はこれ以上評価しない
+                                return best
         
 	# Helper function of NextBoardPosition.  It looks towards
 	# (delta_x, delta_y) direction for one of our own pieces and
@@ -136,6 +164,7 @@ class Game:
                 
                 # Something was captured. Move is valid.
                 new_board["Next"] = 3 - self.Next()
+                print(Game(board=new_board))
 		return Game(board=new_board)
 
 # Returns piece on the board.
@@ -207,7 +236,7 @@ Paste JSON here:<p/><textarea name=json cols=80 rows=24></textarea>
     def pickMove(self, g):
     	# Gets all valid moves.
     	valid_moves = g.ValidMoves()[0] #1つ目の返り値：石を置ける場所
-        bestPos = g.ValidMoves()[1] #2つ目の返り値：最も良い点数
+        bestPos = g.ValidMoves()[1] #2つ目の返り値：最も良いもの
     	if len(valid_moves) == 0:
     		# Passes if no valid moves.
     		self.response.write("PASS")
@@ -217,7 +246,7 @@ Paste JSON here:<p/><textarea name=json cols=80 rows=24></textarea>
                 # You'll probably want to change how this works, to do something
                 # more clever than just picking a random move.
 	        move = self.choosePos(valid_moves, bestPos)
-                print(move)
+                print(PrettyMove(move))
     		self.response.write(PrettyMove(move))
 
 app = webapp2.WSGIApplication([
